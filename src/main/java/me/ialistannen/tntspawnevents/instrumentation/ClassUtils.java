@@ -1,28 +1,6 @@
 package me.ialistannen.tntspawnevents.instrumentation;
 
-import java.lang.management.ManagementFactory;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-public class Utils {
-
-  private static final Pattern PID_PATTERN = Pattern.compile("(\\d+)@.+");
-
-  /**
-   * Returns the PID of the current process.
-   *
-   * @return the pid of the JVM process
-   */
-  public static int getPid() {
-    String name = ManagementFactory.getRuntimeMXBean().getName();
-    Matcher matcher = PID_PATTERN.matcher(name);
-
-    if (!matcher.matches()) {
-      return -1;
-    }
-
-    return Integer.parseInt(matcher.group(1));
-  }
+public class ClassUtils {
 
   /**
    * Returns the bytes for a given class.
@@ -42,7 +20,6 @@ public class Utils {
    * @return true if the bytes for the class can be found
    */
   public static boolean canFindClassBytes(Class<?> clazz) {
-    System.out.println(getClassLoader(clazz));
     return getClassLoader(clazz).getResource(getResourceName(clazz)) != null;
   }
 

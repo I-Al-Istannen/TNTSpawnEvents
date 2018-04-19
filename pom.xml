@@ -54,6 +54,7 @@
               <outputDirectory>
                 /home/i_al_istannen/general_storage/Minecraft/Servers/1.12.2/plugins/update
               </outputDirectory>
+              <!--Sadly we need a lot of the classes from javassist-->
               <minimizeJar>false</minimizeJar>
               <finalName>TNTSpawnEvents</finalName>
             </configuration>

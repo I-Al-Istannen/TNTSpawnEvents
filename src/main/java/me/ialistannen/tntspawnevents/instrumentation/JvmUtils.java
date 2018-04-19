@@ -4,18 +4,45 @@ import com.sun.tools.attach.AgentInitializationException;
 import com.sun.tools.attach.AgentLoadException;
 import com.sun.tools.attach.AttachNotSupportedException;
 import com.sun.tools.attach.VirtualMachine;
-import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.lang.management.ManagementFactory;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Enumeration;
+import java.util.List;
 import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 import java.util.jar.JarOutputStream;
 import java.util.jar.Manifest;
-import org.bukkit.Bukkit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class JvmUtils {
+
+  private static final Pattern PID_PATTERN = Pattern.compile("(\\d+)@.+");
+
+  /**
+   * Returns the PID of the current process.
+   *
+   * @return the pid of the JVM process
+   */
+  public static int getPid() {
+    String name = ManagementFactory.getRuntimeMXBean().getName();
+    Matcher matcher = PID_PATTERN.matcher(name);
+
+    if (!matcher.matches()) {
+      return -1;
+    }
+
+    return Integer.parseInt(matcher.group(1));
+  }
+
 
   /**
    * Attaches a given agent to the JVM by creating a temp agent jar for it.
@@ -31,7 +58,9 @@ public class JvmUtils {
       Path agentJar = createAgentJar();
       Manifest manifest = generateManifest(agentMain);
 
-      writeClassesToJar(agentJar, manifest, agentClasses);
+      List<Class<?>> javassistClasses = getJavassistClasses();
+      Collections.addAll(javassistClasses, agentClasses);
+      writeClassesToJar(agentJar, manifest, javassistClasses.toArray(new Class[0]));
 
       VirtualMachine jvm = VirtualMachine.attach(Integer.toString(pid));
       jvm.loadAgent(agentJar.toAbsolutePath().toString(), arguments);
@@ -40,7 +69,7 @@ public class JvmUtils {
 //      Files.deleteIfExists(agentJar);
 
     } catch (IOException | AttachNotSupportedException | AgentInitializationException
-        | AgentLoadException e) {
+        | AgentLoadException | URISyntaxException e) {
       throw new RuntimeException(e);
     }
   }
@@ -61,19 +90,8 @@ public class JvmUtils {
     mainAttributes.put(new Attributes.Name("Agent-Class"), agentClass.getName());
     mainAttributes.put(new Attributes.Name("Can-Retransform-Classes"), "true");
     mainAttributes.put(new Attributes.Name("Can-Redefine-Classes"), "true");
-//    mainAttributes.put(
-//        new Attributes.Name("Boot-Class-Path"),
-//        codeSourceAsPath(agentClass) + " " + codeSourceAsPath(Bukkit.class)
-//    );
-
-//    System.out.println(codeSourceAsPath(agentClass) + " " + codeSourceAsPath(Bukkit.class));
 
     return manifest;
-  }
-
-  private static String codeSourceAsPath(Class<?> clazz) {
-    return clazz.getProtectionDomain().getCodeSource().getLocation().toString()
-        .replace("file:", "");
   }
 
   private static void writeClassesToJar(Path jarFile, Manifest jarManifest, Class<?>... classes) {
@@ -81,14 +99,44 @@ public class JvmUtils {
         JarOutputStream jarOutputStream = new JarOutputStream(outputStream, jarManifest)) {
 
       for (Class<?> aClass : classes) {
-        String resourceName = Utils.getResourceName(aClass);
+        String resourceName = ClassUtils.getResourceName(aClass);
         jarOutputStream.putNextEntry(new JarEntry(resourceName));
-        jarOutputStream.write(Utils.getClassFileBytes(aClass));
+        jarOutputStream.write(ClassUtils.getClassFileBytes(aClass));
         jarOutputStream.closeEntry();
       }
 
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  private static List<Class<?>> getJavassistClasses() throws URISyntaxException {
+    Path path = Paths
+        .get(JvmUtils.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+
+    List<Class<?>> results = new ArrayList<>();
+
+    try (JarFile jarFile = new JarFile(path.toFile())) {
+      Enumeration<JarEntry> entries = jarFile.entries();
+
+      while (entries.hasMoreElements()) {
+        JarEntry jarEntry = entries.nextElement();
+
+        if (jarEntry.getName().startsWith("javassist") && !jarEntry.isDirectory()) {
+          results.add(
+              Class.forName(
+                  jarEntry.getName()
+                      .replace("/", ".")
+                      .replace(".class", "")
+              )
+          );
+        }
+      }
+
+    } catch (IOException | ClassNotFoundException e) {
+      e.printStackTrace();
+    }
+
+    return results;
   }
 }
