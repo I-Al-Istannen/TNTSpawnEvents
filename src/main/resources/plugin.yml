@@ -1,0 +1,5 @@
+name: TNTSpawnEvents
+version: ${project.version}
+main: me.ialistannen.tntspawnevents.TNTSpawnEvents
+authors: [I_Al_Istannen]
+description: Adds an event that fires when TNT spawns.
