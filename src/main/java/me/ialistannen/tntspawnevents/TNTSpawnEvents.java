@@ -17,22 +17,37 @@ public final class TNTSpawnEvents extends JavaPlugin {
 
   @Override
   public void onEnable() {
+    saveDefaultConfig();
+
     int pid = JvmUtils.getPid();
 
-    getServer().getPluginManager().registerEvents(new ExampleListener(), TNTSpawnEvents.this);
+    if (getConfig().getBoolean("tnt.disable")) {
+      getServer().getPluginManager().registerEvents(new ExampleListener(), TNTSpawnEvents.this);
+    }
 
-    ExternalLibraryUtils.addLibrariesToPath(
-        ExternalLibraryUtils.unpackLibraries(Arrays.asList(ExternalLibrary.values()))
-    );
+    if (LockFile.acquireLock(getConfig())) {
+      ExternalLibraryUtils.addLibrariesToPath(
+          ExternalLibraryUtils.unpackLibraries(Arrays.asList(ExternalLibrary.values()))
+      );
 
-    JvmUtils.attachToJvm(
-        pid,
-        WorldAddEntityModifierAgent.class,
-        "net.minecraft.server.v1_12_R1.World",
-        WorldAddEntityModifierAgent.class, BukkitReflectionUtils.class, ClassUtils.class,
-        IOUtils.class,
-        PrimedTntSpawnEvent.class, TNTSpawnEvents.class
-    );
+      JvmUtils.attachToJvm(
+          pid,
+          WorldAddEntityModifierAgent.class,
+          "net.minecraft.server.v1_12_R1.World",
+          WorldAddEntityModifierAgent.class, BukkitReflectionUtils.class, ClassUtils.class,
+          IOUtils.class,
+          PrimedTntSpawnEvent.class
+      );
+    } else {
+      getLogger().warning("I could not acquire a lock. This is either because you reloaded"
+          + " or because the server crashed *hard* last time... . If it is the latter, please delete"
+          + " the 'lock.file' key in my config. Thanks.");
+    }
+  }
+
+  @Override
+  public void onDisable() {
+    saveConfig();
   }
 
   /**
