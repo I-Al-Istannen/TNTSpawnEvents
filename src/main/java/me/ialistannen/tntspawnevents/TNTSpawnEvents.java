@@ -1,10 +1,13 @@
 package me.ialistannen.tntspawnevents;
 
+import java.util.Arrays;
 import me.ialistannen.tntspawnevents.agent.BukkitReflectionUtils;
 import me.ialistannen.tntspawnevents.agent.WorldAddEntityModifierAgent;
+import me.ialistannen.tntspawnevents.instrumentation.ClassUtils;
 import me.ialistannen.tntspawnevents.instrumentation.IOUtils;
 import me.ialistannen.tntspawnevents.instrumentation.JvmUtils;
-import me.ialistannen.tntspawnevents.instrumentation.ClassUtils;
+import me.ialistannen.tntspawnevents.libs.ExternalLibrary;
+import me.ialistannen.tntspawnevents.libs.ExternalLibraryUtils;
 import net.minecraft.server.v1_12_R1.Entity;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.TNTPrimed;
@@ -18,11 +21,16 @@ public final class TNTSpawnEvents extends JavaPlugin {
 
     getServer().getPluginManager().registerEvents(new ExampleListener(), TNTSpawnEvents.this);
 
+    ExternalLibraryUtils.addLibrariesToPath(
+        ExternalLibraryUtils.unpackLibraries(Arrays.asList(ExternalLibrary.values()))
+    );
+
     JvmUtils.attachToJvm(
         pid,
         WorldAddEntityModifierAgent.class,
         "net.minecraft.server.v1_12_R1.World",
-        WorldAddEntityModifierAgent.class, BukkitReflectionUtils.class, ClassUtils.class, IOUtils.class,
+        WorldAddEntityModifierAgent.class, BukkitReflectionUtils.class, ClassUtils.class,
+        IOUtils.class,
         PrimedTntSpawnEvent.class, TNTSpawnEvents.class
     );
   }
