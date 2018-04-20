@@ -40,4 +40,5 @@ This plugin does a few things:
 
 # Caveats
 
-* `libattach.so` needs to be preset. This is bundled with the JDK, ideally it would be extraced from the jar, but it is platform specific.
+* `libattach.so` needs to be present. It is bundled with the JDK, but a linux version is also found inside the jar.
+   For other OSs I simply had no file to bundle, so it is not included.
