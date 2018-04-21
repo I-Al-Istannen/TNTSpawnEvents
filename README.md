@@ -7,6 +7,14 @@ This plugin is a small POC to add an event that is triggered when primed TNT is 
 This plugin does a few things:
 
 1. Attach a javaagent to the JVM running the server
+
+    1. If it is running Java 8 or lower, all is fine. Just attach.
+    2. If it is running Java 9 or newer and the system property switch to allow
+       self-attachment is set, all is fine.
+    3. If however, the switch is not set and it is running Java 9 or newer, the attaching
+       process must be in a *different* JVM. This is achieved by packaging a small two
+       class launcher jar that is then called and executed.
+
 2. Use that agent to request a redefinition of the NMS World class, as that is where entities are added
 3. Modify the bytecode of that class using javassist and inject some code. To understand what exactly, have
    a look at what the method in question does normally:
