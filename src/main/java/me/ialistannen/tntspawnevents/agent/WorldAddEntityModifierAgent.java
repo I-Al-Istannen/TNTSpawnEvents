@@ -5,17 +5,20 @@ import java.lang.instrument.ClassDefinition;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.Instrumentation;
 import java.lang.instrument.UnmodifiableClassException;
+import java.lang.ref.WeakReference;
 import java.security.ProtectionDomain;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javassist.ClassPool;
 import javassist.CtClass;
 import javassist.CtMethod;
+import javassist.LoaderClassPath;
 import javassist.bytecode.LineNumberAttribute;
 import javassist.bytecode.LocalVariableAttribute;
 import javassist.bytecode.MethodInfo;
@@ -23,39 +26,40 @@ import me.ialistannen.tntspawnevents.instrumentation.ClassUtils;
 
 public class WorldAddEntityModifierAgent implements ClassFileTransformer {
 
+  private static final Logger LOGGER = Logger.getLogger("TNTSpawnAgent");
+
   private Set<String> classesToTransform;
   private ClassPool classPool;
+  private List<WeakReference<ClassLoader>> attachedClassLoaders;
 
   private WorldAddEntityModifierAgent(Collection<String> classesToTransform) {
     this.classesToTransform = new HashSet<>(classesToTransform);
     this.classPool = ClassPool.getDefault();
+    this.attachedClassLoaders = new ArrayList<>();
   }
 
   public static void agentmain(String arguments, Instrumentation instrumentation) {
-    System.out.println("Agent instantiated! with arguments: '" + arguments + "'");
+    LOGGER.info(addPrefix("Agent instantiated! Arguments: '" + arguments + "'"));
 
-    List<Class<?>> classes = Arrays.stream(arguments.split(","))
-        .map(BukkitReflectionUtils::getClassUnchecked)
-        .filter(Objects::nonNull)
-        .filter(ClassUtils::canFindClassBytes)
-        .collect(Collectors.toList());
+    Class<?> clazz = BukkitReflectionUtils.getClassUnchecked(arguments);
+
+    if (!ClassUtils.canFindClassBytes(clazz)) {
+      LOGGER.severe(addPrefix("Couldn't find class bytes for '%s', aborting.", clazz));
+      return;
+    }
 
     WorldAddEntityModifierAgent agent = new WorldAddEntityModifierAgent(
-        classes.stream().map(Class::getName)
-            .map(s -> s.replace('.', '/'))
-            .collect(Collectors.toList())
+        Collections.singletonList(arguments.replace('.', '/'))
     );
 
     instrumentation.addTransformer(agent);
 
     try {
-      for (Class<?> aClass : classes) {
-        instrumentation.redefineClasses(new ClassDefinition(
-            aClass, ClassUtils.getClassFileBytes(aClass)
-        ));
-      }
+      instrumentation.redefineClasses(new ClassDefinition(
+          clazz, ClassUtils.getClassFileBytes(clazz))
+      );
     } catch (ClassNotFoundException | UnmodifiableClassException e) {
-      e.printStackTrace();
+      LOGGER.log(Level.WARNING, addPrefix("An error occurred redefining the target class"), e);
     } finally {
       instrumentation.removeTransformer(agent);
     }
@@ -68,6 +72,8 @@ public class WorldAddEntityModifierAgent implements ClassFileTransformer {
     if (!classesToTransform.contains(className)) {
       return null;
     }
+
+    addClassloaderToPathIfNotPresent(loader);
 
     try {
       CtClass ctClass = classPool.makeClass(new ByteArrayInputStream(classfileBuffer));
@@ -113,11 +119,35 @@ public class WorldAddEntityModifierAgent implements ClassFileTransformer {
         break;
       }
 
+      LOGGER.info(addPrefix("Redefined '%s'", className));
+
       return ctClass.toBytecode();
     } catch (Throwable e) {
-      e.printStackTrace();
+      LOGGER.log(Level.WARNING, addPrefix("An error occurred transforming the target class"), e);
     }
 
     return null;
+  }
+
+  private void addClassloaderToPathIfNotPresent(ClassLoader classLoader) {
+    for (WeakReference<ClassLoader> attachedClassLoader : attachedClassLoaders) {
+      if (attachedClassLoader.get() == classLoader) {
+        return;
+      }
+    }
+    attachedClassLoaders.add(new WeakReference<>(classLoader));
+    classPool.appendClassPath(new LoaderClassPath(classLoader));
+
+    LOGGER.info(addPrefix(classLoader + " was added to the ClassPool"));
+
+    cleanCollectedLoaders();
+  }
+
+  private void cleanCollectedLoaders() {
+    attachedClassLoaders.removeIf(ref -> ref.get() == null);
+  }
+
+  private static String addPrefix(String message, Object... formatParameters) {
+    return String.format("[TNTSpawnAgent] " + message, formatParameters);
   }
 }
