@@ -27,6 +27,20 @@ public class OsUtils {
     return OsType.UNKNOWN;
   }
 
+  /**
+   * Returns the current java version (approx)
+   *
+   * @return the current java version
+   */
+  public static String getCurrentJavaVersion() {
+    String value = System.getProperty("java.version");
+    if (value.startsWith("1.")) {
+      return value.substring(0, 3);
+    } else {
+      return value.substring(0, value.indexOf('.'));
+    }
+  }
+
   public enum OsType {
     LINUX(".so"), WINDOWS(".dll"), MAC(".dylib"), UNKNOWN(".nop");
 

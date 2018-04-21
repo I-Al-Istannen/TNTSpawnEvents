@@ -51,7 +51,7 @@ public class JvmUtils {
    * @param arguments the arguments to pass to the agent
    * @param agentClasses all classes (including the main) that should be written to the agent
    */
-  public static void attachToJvm(int pid, Class<?> agentMain, String arguments,
+  public static void attachToJvm(int pid, Path libsDir, Class<?> agentMain, String arguments,
       Class<?>... agentClasses) {
     try {
       Path agentJar = createAgentJar();
@@ -61,7 +61,7 @@ public class JvmUtils {
       Collections.addAll(javassistClasses, agentClasses);
       writeClassesToJar(agentJar, manifest, javassistClasses.toArray(new Class[0]));
 
-      AgentRunner.run(agentJar, pid, arguments);
+      AgentRunner.run(agentJar, pid, libsDir, arguments);
 
     } catch (IOException | AttachNotSupportedException | AgentInitializationException
         | AgentLoadException | URISyntaxException e) {

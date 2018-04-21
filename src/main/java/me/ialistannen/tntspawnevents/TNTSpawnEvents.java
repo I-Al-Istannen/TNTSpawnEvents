@@ -1,5 +1,6 @@
 package me.ialistannen.tntspawnevents;
 
+import java.nio.file.Path;
 import java.util.Arrays;
 import me.ialistannen.tntspawnevents.agent.BukkitReflectionUtils;
 import me.ialistannen.tntspawnevents.agent.WorldAddEntityModifierAgent;
@@ -26,12 +27,13 @@ public final class TNTSpawnEvents extends JavaPlugin {
     }
 
     if (LockFile.acquireLock(getConfig())) {
-      ExternalLibraryUtils.addLibrariesToPath(
-          ExternalLibraryUtils.unpackLibraries(Arrays.asList(ExternalLibrary.values()))
-      );
+      Path libraryDir = ExternalLibraryUtils
+          .unpackLibraries(Arrays.asList(ExternalLibrary.values()));
+      ExternalLibraryUtils.addLibrariesToPath(libraryDir);
 
       JvmUtils.attachToJvm(
           pid,
+          libraryDir,
           WorldAddEntityModifierAgent.class,
           "net.minecraft.server.v1_12_R1.World",
           WorldAddEntityModifierAgent.class, BukkitReflectionUtils.class, ClassUtils.class,

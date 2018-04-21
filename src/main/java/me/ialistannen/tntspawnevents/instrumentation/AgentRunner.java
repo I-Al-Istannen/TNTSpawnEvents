@@ -14,6 +14,7 @@ import java.util.jar.Attributes.Name;
 import java.util.jar.Manifest;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import me.ialistannen.tntspawnevents.libs.ExternalLibraryUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.JavaVersion;
 import org.apache.commons.lang3.SystemUtils;
@@ -27,8 +28,10 @@ class AgentRunner {
    *
    * @param agentJar the path to the agent jar
    * @param pid the pid of the JVM to attach to
+   * @param libsDir the path to the directly containing the external libs (e.g. libattach.1.8)
+   * @param arguments the arguments for the agent
    */
-  static void run(Path agentJar, int pid, String arguments)
+  static void run(Path agentJar, int pid, Path libsDir, String arguments)
       throws IOException, AgentLoadException, AgentInitializationException,
       AttachNotSupportedException {
 
@@ -47,7 +50,7 @@ class AgentRunner {
     }
 
     LOGGER.info(attachPrefix("Attaching via an external runner..."));
-    startNewJVMAndAttach(agentJar, pid, arguments);
+    startNewJVMAndAttach(agentJar, pid, libsDir, arguments);
   }
 
   private static void attachJavaToSameJVM(Path agentJar, int pid, String arguments)
@@ -59,7 +62,7 @@ class AgentRunner {
     jvm.detach();
   }
 
-  private static void startNewJVMAndAttach(Path agentJar, int pid, String arguments)
+  private static void startNewJVMAndAttach(Path agentJar, int pid, Path libDir, String arguments)
       throws IOException {
     Path tempFile = Files.createTempFile("TNT-Spawn_external_attacher", ".jar");
     tempFile.toFile().deleteOnExit();
@@ -67,7 +70,7 @@ class AgentRunner {
     JvmUtils.writeClassesToJar(
         tempFile,
         generateExternalAttacherManifest(),
-        ExternalAgentAttacher.class, VirtualMachine.class
+        ExternalAgentAttacher.class, VirtualMachine.class, ExternalLibraryUtils.class
     );
 
     ProcessBuilder processBuilder = new ProcessBuilder(
@@ -76,10 +79,11 @@ class AgentRunner {
         tempFile.toAbsolutePath().toString(),
         Integer.toString(pid),
         agentJar.toAbsolutePath().toString(),
+        libDir.toAbsolutePath().toString(),
         arguments
     );
 
-    LOGGER.fine(attachPrefix("Running commannd '%s'", processBuilder.command()));
+    LOGGER.fine(attachPrefix("Running command '%s'", processBuilder.command()));
 
     Process process = processBuilder.start();
 

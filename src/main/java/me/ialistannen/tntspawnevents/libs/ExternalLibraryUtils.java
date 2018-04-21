@@ -46,6 +46,7 @@ public class ExternalLibraryUtils {
   public static Path unpackLibraries(Collection<ExternalLibrary> libraries) {
     try {
       OsType osType = OsUtils.getOsType();
+      String currentJavaVersion = OsUtils.getCurrentJavaVersion();
       String osResourcePrefix = osType.getResourcePrefix();
 
       Path tempDirectory = Files.createTempDirectory("external-libs");
@@ -56,7 +57,13 @@ public class ExternalLibraryUtils {
 
       for (ExternalLibrary library : libraries) {
         String folderPath =
-            library.getBasePath() + "/" + osResourcePrefix + "/" + library.getExecutableName();
+            library.getBasePath()
+                + "/"
+                + osResourcePrefix
+                + "/"
+                + library.getExecutableName()
+                + "."
+                + currentJavaVersion;
 
         Path resultPath = tempDirectory
             .resolve(library.getExecutableName() + osType.getExecutableSuffix());
@@ -79,6 +86,15 @@ public class ExternalLibraryUtils {
    * @param target the path to write to
    */
   private static void unpack(String resourcePath, Path target) {
+    if (ExternalLibrary.class.getResource(resourcePath) == null) {
+      throw new RuntimeException(
+          "Sorry, your java version ('"
+              + System.getProperty("java.version")
+              + "') is currently not supported on '"
+              + System.getProperty("os.name") + "'."
+      );
+    }
+
     byte[] bytes = IOUtils.getAllBytes(ExternalLibrary.class.getResourceAsStream(resourcePath));
     try {
       Files.write(
