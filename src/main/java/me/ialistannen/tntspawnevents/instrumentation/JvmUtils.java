@@ -3,7 +3,6 @@ package me.ialistannen.tntspawnevents.instrumentation;
 import com.sun.tools.attach.AgentInitializationException;
 import com.sun.tools.attach.AgentLoadException;
 import com.sun.tools.attach.AttachNotSupportedException;
-import com.sun.tools.attach.VirtualMachine;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.management.ManagementFactory;
@@ -62,11 +61,7 @@ public class JvmUtils {
       Collections.addAll(javassistClasses, agentClasses);
       writeClassesToJar(agentJar, manifest, javassistClasses.toArray(new Class[0]));
 
-      VirtualMachine jvm = VirtualMachine.attach(Integer.toString(pid));
-      jvm.loadAgent(agentJar.toAbsolutePath().toString(), arguments);
-      jvm.detach();
-
-//      Files.deleteIfExists(agentJar);
+      AgentRunner.run(agentJar, pid, arguments);
 
     } catch (IOException | AttachNotSupportedException | AgentInitializationException
         | AgentLoadException | URISyntaxException e) {
@@ -94,7 +89,14 @@ public class JvmUtils {
     return manifest;
   }
 
-  private static void writeClassesToJar(Path jarFile, Manifest jarManifest, Class<?>... classes) {
+  /**
+   * Writes the given classes into a jar file.
+   *
+   * @param jarFile the file to write to
+   * @param jarManifest the manifest
+   * @param classes the classes to write
+   */
+  public static void writeClassesToJar(Path jarFile, Manifest jarManifest, Class<?>... classes) {
     try (OutputStream outputStream = Files.newOutputStream(jarFile);
         JarOutputStream jarOutputStream = new JarOutputStream(outputStream, jarManifest)) {
 
