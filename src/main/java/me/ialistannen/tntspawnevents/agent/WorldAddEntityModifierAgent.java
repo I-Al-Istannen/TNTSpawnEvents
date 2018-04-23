@@ -38,10 +38,10 @@ public class WorldAddEntityModifierAgent implements ClassFileTransformer {
     this.attachedClassLoaders = new ArrayList<>();
   }
 
-  public static void agentmain(String arguments, Instrumentation instrumentation) {
+  public static void agentmain(String arguments, Instrumentation instrumentation) throws Exception {
     LOGGER.info(addPrefix("Agent instantiated! Arguments: '" + arguments + "'"));
 
-    Class<?> clazz = BukkitReflectionUtils.getClassUnchecked(arguments);
+    Class<?> clazz = Class.forName(arguments);
 
     if (!ClassUtils.canFindClassBytes(clazz)) {
       LOGGER.severe(addPrefix("Couldn't find class bytes for '%s', aborting.", clazz));
@@ -102,7 +102,7 @@ public class WorldAddEntityModifierAgent implements ClassFileTransformer {
         String code = "if ($1 instanceof net.minecraft.server.v1_12_R1.EntityTNTPrimed) {"
             + "event = org.bukkit.Bukkit.getPluginManager().getPlugin(\"TNTSpawnEvents\")"
             + "            .getClass()"
-            + "            .getMethod(\"callEvent\", new Class[]{net.minecraft.server.v1_12_R1.Entity.class})"
+            + "            .getMethod(\"callEvent\", new Class[]{java.lang.Object.class})"
             + "            .invoke(null, new Object[]{$1});"
             + "}";
 

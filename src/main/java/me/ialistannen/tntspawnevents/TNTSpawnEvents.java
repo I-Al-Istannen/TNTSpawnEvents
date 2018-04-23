@@ -2,14 +2,13 @@ package me.ialistannen.tntspawnevents;
 
 import java.nio.file.Path;
 import java.util.Arrays;
-import me.ialistannen.tntspawnevents.agent.BukkitReflectionUtils;
 import me.ialistannen.tntspawnevents.agent.WorldAddEntityModifierAgent;
 import me.ialistannen.tntspawnevents.instrumentation.ClassUtils;
 import me.ialistannen.tntspawnevents.instrumentation.IOUtils;
 import me.ialistannen.tntspawnevents.instrumentation.JvmUtils;
 import me.ialistannen.tntspawnevents.libs.ExternalLibrary;
 import me.ialistannen.tntspawnevents.libs.ExternalLibraryUtils;
-import net.minecraft.server.v1_12_R1.Entity;
+import me.ialistannen.tntspawnevents.util.BukkitReflectionUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.TNTPrimed;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -35,8 +34,8 @@ public final class TNTSpawnEvents extends JavaPlugin {
           pid,
           libraryDir,
           WorldAddEntityModifierAgent.class,
-          "net.minecraft.server.v1_12_R1.World",
-          WorldAddEntityModifierAgent.class, BukkitReflectionUtils.class, ClassUtils.class,
+          BukkitReflectionUtils.getNmsClass("World").getCanonicalName(),
+          WorldAddEntityModifierAgent.class, ClassUtils.class,
           IOUtils.class,
           PrimedTntSpawnEvent.class
       );
@@ -59,9 +58,15 @@ public final class TNTSpawnEvents extends JavaPlugin {
    * @return the created and called {@link PrimedTntSpawnEvent}
    */
   @SuppressWarnings("unused") // called by javassisted bytecode
-  public static PrimedTntSpawnEvent callEvent(Entity entity) {
+  public static PrimedTntSpawnEvent callEvent(Object entity) {
     try {
-      PrimedTntSpawnEvent event = new PrimedTntSpawnEvent((TNTPrimed) entity.getBukkitEntity());
+      TNTPrimed bukkitTnt = BukkitReflectionUtils.invokeMethod(
+          BukkitReflectionUtils.getNmsClass("Entity"),
+          entity,
+          "getBukkitEntity"
+      );
+
+      PrimedTntSpawnEvent event = new PrimedTntSpawnEvent(bukkitTnt);
       Bukkit.getPluginManager().callEvent(event);
 
       return event;
