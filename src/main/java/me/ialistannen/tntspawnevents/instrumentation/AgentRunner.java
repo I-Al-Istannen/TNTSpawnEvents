@@ -15,7 +15,6 @@ import java.util.jar.Manifest;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import me.ialistannen.tntspawnevents.libs.ExternalLibraryUtils;
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.JavaVersion;
 import org.apache.commons.lang3.SystemUtils;
 
@@ -89,8 +88,12 @@ class AgentRunner {
 
     new Thread(() -> {
       try {
-        String error = IOUtils.toString(process.getErrorStream(), StandardCharsets.UTF_8);
-        String output = IOUtils.toString(process.getInputStream(), StandardCharsets.UTF_8);
+        String error = new String(
+            IOUtils.getAllBytes(process.getErrorStream()), StandardCharsets.UTF_8
+        );
+        String output = new String(
+            IOUtils.getAllBytes(process.getInputStream()), StandardCharsets.UTF_8
+        );
 
         process.waitFor();
 
@@ -100,7 +103,7 @@ class AgentRunner {
           LOGGER.warning(attachPrefix("The error stream was '%s'", error));
         }
 
-      } catch (IOException | InterruptedException e) {
+      } catch (RuntimeException | InterruptedException e) {
         LOGGER.log(Level.WARNING, attachPrefix("Could not start the external agent"), e);
       }
     }).start();
